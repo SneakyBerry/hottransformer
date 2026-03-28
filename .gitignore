@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model checkpoints
+proof_gate_poc/checkpoints/
+*.pt
+*.pth
+
+# Data
+*.pickle
+*.pkl
+
+# Logs
+*.log
+wandb/
+runs/
+
+# Docs build artifacts
+cascade_paper_v5.docx
+
+# Cloned dependencies (large)
+agda-src/
+agda-stdlib/
+cubical-mini/
+
+# Extracted data (regeneratable)
+cubical_training_data.json
+stdlib_training_data.json
+
+# Agda work files
+proof_gate_poc/checkpoints/agda_work/
+*.agdai
