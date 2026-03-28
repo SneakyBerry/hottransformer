@@ -240,7 +240,8 @@ def online_train(
 
     rng = random.Random(int(time.time()))
     baseline = 0.0
-    lemma_bank = LemmaMemory.load()  # resume from saved lemmas
+    lemma_bank = LemmaMemory.load()
+    encoding_cache = {}
 
     # Running stats
     total_proofs_found = 0
@@ -249,6 +250,9 @@ def online_train(
     round_gate_rates = []
 
     for round_idx in tqdm(range(config.n_rounds), desc="Online training"):
+        # Clear encoding cache periodically (weights change)
+        if round_idx % 50 == 0:
+            encoding_cache.clear()
         model.train()
 
         # ── Temperature annealing ────────────────────────────
@@ -293,6 +297,7 @@ def online_train(
                     max_steps=config.max_proof_len,
                     temperature=attempt_temp,
                     lemma_bank=lemma_bank,
+                    encoding_cache=encoding_cache,
                 )
             else:
                 result = model.forward_with_gate(

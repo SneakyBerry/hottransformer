@@ -459,6 +459,7 @@ class ProofGateTransformer(nn.Module):
         temperature: float = 1.0,
         max_backtracks: int = 5,
         lemma_bank=None,
+        encoding_cache: dict = None,
     ) -> dict:
         """Hole-by-hole proof construction with:
         - Attention-based hole selection
@@ -483,24 +484,28 @@ class ProofGateTransformer(nn.Module):
         device = src.device
         global_memory = self.encode(src)
 
-        # Hole encoding cache: (ctx_key, goal_key) → tensor
-        _hole_cache = {}
+        # Hole encoding cache — detach tensors to avoid backward-through-graph issues
+        _hole_cache = encoding_cache if encoding_cache is not None else {}
+        _use_cache = not self.training  # only cache in eval mode (no grad needed)
 
         def encode_hole_cached(ctx, goal):
             key = (id(ctx), str(goal))
-            if key not in _hole_cache:
-                _hole_cache[key] = self._encode_holes_batch([(ctx, goal)], device)
-            return _hole_cache[key]
+            if _use_cache and key in _hole_cache:
+                return _hole_cache[key]
+            result = self._encode_holes_batch([(ctx, goal)], device)
+            if _use_cache:
+                _hole_cache[key] = result.detach()
+            return result
 
         def encode_holes_cached(holes):
-            """Batch encode, using cache for already-seen holes."""
+            """Batch encode, using cache for already-seen holes (eval only)."""
             uncached = []
             uncached_idx = []
             results = [None] * len(holes)
 
             for i, h in enumerate(holes):
                 key = (id(h.ctx), str(h.goal))
-                if key in _hole_cache:
+                if _use_cache and key in _hole_cache:
                     results[i] = _hole_cache[key]
                 else:
                     uncached.append((h.ctx, h.goal))
@@ -511,8 +516,9 @@ class ProofGateTransformer(nn.Module):
                 for j, idx in enumerate(uncached_idx):
                     vec = encoded[j:j+1]
                     results[idx] = vec
-                    h = holes[idx]
-                    _hole_cache[(id(h.ctx), str(h.goal))] = vec
+                    if _use_cache:
+                        h = holes[idx]
+                        _hole_cache[(id(h.ctx), str(h.goal))] = vec.detach()
 
             stacked = torch.cat([r for r in results if r is not None], dim=0)
 

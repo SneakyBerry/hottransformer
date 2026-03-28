@@ -495,11 +495,13 @@ def train_reinforce(
 
     baseline = 0.0
     metrics_history = []
+    encoding_cache = {}  # persistent across batches
 
     for epoch in range(config.rl_epochs):
         global_epoch = epoch_offset + epoch
         model.train()
         epoch_start = time.time()
+        encoding_cache.clear()  # fresh per epoch (weights changed)
 
         epoch_loss = 0.0
         epoch_gate_open = 0
@@ -522,6 +524,7 @@ def train_reinforce(
                 max_steps=config.max_proof_len,
                 temperature=config.temperature,
                 lemma_bank=lemma_bank,
+                encoding_cache=encoding_cache,
             )
 
             # Compute rewards: optimality ratio from normalizer
